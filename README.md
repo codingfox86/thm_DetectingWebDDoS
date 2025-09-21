@@ -65,7 +65,6 @@ What do we call the network of compromised machines that attackers use to launch
 _Botnet_ <br>
 <br>
 ### 3 Attack Motives<br>
-<br>
 <img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1756796553744.svg" /><br>
 Now that you have learned how attackers launch DoS and DDoS attacks, let's look at why they do it. At first glance, a short web service outage may seem minor, but for organizations that depend on constant availability, the consequences can be severe, leading to lost income, frustrated users, and reputational damage.<br>
 <br>
@@ -95,7 +94,6 @@ Which motive most likely drove the 2023 DDoS attack against Microsoft?<br>
 _Hacktivism_ <br>
 <br>
 ### 4 Log Analysis <br>
-<br>
 Web server logs are a valuable source of evidence when investigating denial-of-service attacks. Every major web service, whether Apache, NGINX, or Microsoft IIS, records web requests in a somewhat standardized log format. By examining these logs, analysts and responders can uncover patterns that help distinguish between normal user traffic and malicious activity. In this task, we will look at some key indicators of a potential DoS and DDoS attack, and highlight the strengths and limitations of relying on logs for detection.<br>
 <br>
 From the previous tasks, we know that denial-of-service attacks often rely on sending a flood of HTTP requests to the target, but can also utilize individually specially crafted web requests to halt a service.<br>
@@ -133,15 +131,16 @@ Let's examine a sample condensed access log to see how a DoS attack might appear
 3. Web Server Down - Users are requesting pages and receiving 503 responses indicating the service is unavailable <br>
 <br>
 <img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1756796553744.svg" /><br>
-<br>
-__Hands On__ <br>
-<br>
+
+__Hands On__  <br>
+
 Your bicycle parts website has undergone a denial-of-service attack. Open up the access.log file on the user's Desktop to begin your investigation. The logs include a mix of normal user-generated traffic and attacker traffic. While you comb the logs, be on the lookout for repeated requests to the same page and remember the indicators you learned about in this task. Best of luck!<br>
 <br>
 <img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1756878486219.svg" />
 
 __Questions:__ <br>
-Open the access.log file found on desktop 
+Open the access.log file found on the desktop, you'll find the answers in there! <br>
+<img src="https://github.com/codingfox86/thm_DetectingWebDDoS/blob/main/logfile.png" /> <br>
 What is the attacker’s IP address?<br>
 _203.12.23.195_ <br>
 <br>
@@ -149,13 +148,105 @@ Which page is repeatedly targeted by the attacker’s requests?<br>
 _/login_ <br>
 <br>
 After the attack, what error code do legitimate users receive?<br>
-_503_ <br>
+_503_
+<br>
+### 5 Leveraging SIEMs <br>
+Securing Information and Event Management (SIEM) platforms make log analysis far more efficient by providing the ability to combine multiple log sources and query for useful fields. Instead of scrolling through endless raw entries in a log file, you can filter and sort logs by IP address, user agent, or response code. This ability makes identifying patterns in traffic much easier.<br>
+<br>
+In the screenshot below, you can see a timechart created in Splunk based on all requests to a server over a period of ten minutes. <br>
+1. Normal User Requests - A few requests to various pages every minute <br>
+2. DoS Attack - 1,000 requests to /login.php within a one-minute timeframe <br>
+3. Requested Pages <br>
+<img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1756958638388.svg" />
+Looking over the same requests but filtering by the user agent (useragent) and IP address (clientip) fields enables you to see more details about where the requests originated. <br>
 
+<img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1756958638452.svg" />
 
+__Hands On__ <br> 
 
+This time, your website experienced a suspected DDoS attack. You’ll use Splunk to investigate what happened! <br>
+<br>
+Open the Splunk instance using the shortcut on the Desktop, or access it directly at http://10.10.40.78:8000 <br>
+<br>
+During this exercise, you’ll analyze web access logs collected during the suspected attack period. These logs contain a mix of normal user traffic and potentially malicious requests. To begin, open the Search & Reporting app in Splunk and run a search in the main index: index="main". On the left side of the GUI, you will see the fields that have been extracted from the log file. These will prove to be very useful as you investigate.<br><br>
+__Questions:__ <br>
+Open Splunk and enter _index="main"_ in the search field <br>
+<br>
+What was the most frequently requested uri?<br>
+Click on _uri_ - the top value is _/search_ <br>
+<img width="573" height="464" src="https://github.com/codingfox86/thm_DetectingWebDDoS/blob/main/uri.png" /><<br>
+<br>
+Which clientip made the most requests to the target uri?<br>
+Click on _clientip_ - the top value is _203.0.113.7_ <br><br>
+How many IP addresses were part of the botnet that attacked your website?<br>
+We know that the attacker IPs start with 203.xx.xx.xx -type: _index="main" clientip="203*"_ in the search bar and look at _clientip_ <br>
+_60_ <br>
+Which useragent was most commonly used by the attacking traffic?<br>
+Click on _useragent_ the top value is _Java/1.8.0_181_ <br>
+<br>
+Use the timechart command to visualize the requests. What is the peak number of requests made per second during the attack?<br>
+Type: _index="main" | timechart span=1s count by 203.0.113.7_ in the search bar and the click on Visualization. Hovering over the on peak result will show the answer: <br>
+_207_ <br>
+<br>
+Which legitimate (non-attacking) clientip received the first 503 response status post-attack?<br>
+Type: _index="main" AND status="503" AND clientip=10*_ - I went to the last page of the entrys which shows the earlier entrys and bam:<br>
+_10.10.0.27_ <br>
+<br>
+### 6 Defense <br>
+Attackers constantly look for weak points to exploit, but defenders have various tools and methods to keep systems resilient. In this task, we will examine prevention and mitigation strategies available to ensure our websites and web apps are as protected as possible from denial-of-service attacks.<<br>
 
+ __Application Level Defense__ <br>
+Secure Development Practices<br>
+A secure site starts with secure code. Search fields and forms must validate input so they can’t be abused. Think of a search form like a librarian who looks up books on request. If the librarian has clear rules, like “only search for titles under 50 characters”, they can respond quickly. Without rules in place, someone could ask the librarian to search for an overly long or strange title with special characters, slowing them down and delaying everyone else's requests. In the same way, web applications need input validation to stop attackers from submitting specialized queries aimed at overloading the system.<br>
+<br>
+Challenges<br>
+One way to stop automated traffic is to require a challenge before granting access. This could be a CAPTCHA, where the user solves a puzzle, like clicking images or checking a box. For humans, it’s a small step, but for bots, it can block or slow down an attack.<br>
+Websites can also use JavaScript challenges, which run quietly in the background to confirm if a visitor is a real user or automated traffic. Legitimate users usually don’t notice them, but automated tools and botnets often fail, making these challenges an effective filter against malicious traffic.<br>
+<img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1757551295165.gif" /><br>
+<br>
+__Network and Infrastructure Defenses__ <br>
+<br>
+Content Delivery Network (CDN)<br>
+CDNs help manage server load by caching and serving content from edge servers closest to users. This reduces latency and allows the origin server to handle only a fraction of requests, while the CDN serves the majority. As a result, CDNs take on much of the burden of mitigating DDoS attacks. They also provide load-balancing to distribute traffic across servers, ensuring no single server is overloaded and rerouting requests if one becomes unavailable.<br>
 
+Here’s an example of a 16 TB DDoS attack displayed in the Cloudflare CDN dashboard.
+1. Total bandwidth over a 30-day period - This shows the entire traffic volume over the last 30 days. If your site normally sees a few hundred gigabytes a month, suddenly seeing 16 TB indicates something is abnormal.<br>
+2. Total cached bandwidth by CDN edge servers - This represents how much traffic was successfully delivered by the CDN's edge servers. Nearly all of the bandwidth being cached indicates that Cloudflare absorbed the attack traffic before it could overwhelm the backend.<br>
+3. Traffic spike from DDoS attack - The spike in the graph is the signature of the DDoS attack. Without a CDN, the flood of requests would have hit the origin server.<br>
+<img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1756817646267.svg" />
+Beyond absorbing traffic, CDNs also provide analysts with powerful visibility, including helpful visuals and diagnostics of website traffic. This lets you quickly break down requests by geographic location, volume, and source patterns, helping distinguish malicious traffic from legitimate users.<br><br>
+<img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1756818035821.svg" />
 
+Web Application Firewall (WAF)<br>
+CDNs typically integrate WAFs in an effort to shield their customers' servers. They inspect incoming traffic and either allow, challenge, or block requests. WAFs work off of rules that integrate known attack indicators and threat intelligence. Modern WAF solutions are already very good at mitigating DoS and DDoS attacks because they know what to look out for. Custom rules can also be developed to assist in defending against targeted threats.<br>
+For example, you might implement a rate-limiting firewall rule that limits requests to /login.php to five per minute. If the originating IP requests the page more than five times, it would be blocked from making future requests for a period of time or provided with a challenge to prove it is a human-made request. <br><br>
+<img src="https://tryhackme-images.s3.amazonaws.com/user-uploads/616945d482ef350052080da1/room-content/616945d482ef350052080da1-1756818035660.svg" />
+
+Large-Scale Mitigation<br>
+Modern defense solutions can block denial-of-service attacks and also leverage their vast distributed infrastructure to absorb and balance large volumes of traffic. In 2023, Google mitigated a large-scale DDoS that peaked at 398 million requests per second. Cloudflare claims to have mitigated the largest DDoS ever recorded, which peaked at 11.5 Tbps and lasted only 35 seconds. These examples demonstrate how providers use global networks and traffic filtering to keep even the largest attacks from taking critical services offline.<br>
+<br>
+Bypassing Security Measures<br>
+While CDNs, caching, and WAFs provide strong protection, attackers often attempt to bypass these defenses. One technique is appending random query parameters. Your CDN might serve a cached URL at /products, but if an attacker appends the query with a random string like /products?a=abcd, your CDN cannot serve the cached page, and the origin server is forced to respond. Similarly, changing user agents, spoofing referrer pages, or launching requests from diverse geographic regions can help attackers evade WAF filtering rules.<br>
+<br>
+__Questions__ <br>
+What type of security challenge blocks bots by asking users to solve a simple puzzle?<br>
+_CAPTCHA_<br>
+<br>
+Which CDN feature spreads traffic across multiple servers to prevent overload?<br>
+_Load-balancing_ <br>
+<br>
+
+### 7 Conclusion <br>
+<br>
+In this room, you explored different types of Denial-of-Service attacks, how they work, and the motives behind them, supported by some real-world examples. You practiced identifying DoS and DDoS activity in web server logs by analyzing common indicators and learned how SIEM platforms help analysts investigate and manage large volumes of traffic. Through a hands-on Splunk exercise, you uncovered evidence of a DDoS attack. Finally, you examined how CDNs and WAFs can help defend websites and applications against these attacks.<br>
+
+__Question:__ <br>
+Complete the room and continue on your cyber learning journey! <br>
+_No answer needed_ <br>
+<br>
+<br>
+
+### That's it folks! Thanks for passing by! Keep learning!
 
 
 
