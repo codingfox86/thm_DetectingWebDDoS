@@ -1,7 +1,7 @@
 Hej there, this is my first walkthrough for THM. Hope it helps!
 <br><br><br>
 <img width="100" height="100" alt="Detecting Web DDos" src="https://github.com/user-attachments/assets/7ed71a15-48ec-4a45-9d71-5699948f7cdf" />
-## Detecting Web DDoS 
+## [Detecting Web DDoS](https://tryhackme.com/room/detectingwebddos)
 ### 1 Introduction<br>
 Denial-of-Service (DoS) attacks can take many forms, but their ultimate aim is to disrupt or completely block access to a website or web service. In this room, you will explore how DoS and DDoS attacks target the application layer, the techniques behind them, and how you, as a defender, can detect and mitigate these common threats.
 <br><br>
